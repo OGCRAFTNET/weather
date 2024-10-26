@@ -177,15 +177,7 @@
                         const temperature = isCelsius ? data.current.temp_c : data.current.temp_f;
                         const conditionText = data.current.condition.text;
 
-                        if (temperature >= 30) {
-                            clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
-                        } else if (temperature >= 20) {
-                            clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
-                        } else if (temperature >= 10) {
-                            clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
-                        } else {
-                            clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
-                        }
+                        updateClothingTip(temperature, isCelsius); // Aktualisiere den Kleidungstipp
                         clothingTipContainer.style.display = 'block';
                         weatherDiv.innerHTML = `Aktuelle Temperatur in ${data.location.name}: ${temperature}°${unit} - ${conditionText}`;
                         weatherDiv.style.opacity = 1;
@@ -201,7 +193,7 @@
                         const date = new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
                         const condition = day.day.condition.text;
                         const tempMin = isCelsius ? day.day.mintemp_c : day.day.mintemp_f;
-                        const tempMax = isCelsius ? day.day.maxtemp_c : day.day.maxtemp_f;
+                        const tempMax = isCelsius ? day.day.maxtemp_c : day.day.mintemp_f;
 
                         const card = document.createElement('div');
                         card.classList.add('forecast-card');
@@ -215,37 +207,64 @@
                 });
         }
 
+        // Kleidungstipps basierend auf der Temperatur aktualisieren
+        function updateClothingTip(temperature, isCelsius) {
+            const clothingTip = document.getElementById('clothing-tip');
+            if (isCelsius) {
+                if (temperature >= 30) {
+                    clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
+                } else if (temperature >= 20) {
+                    clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
+                } else if (temperature >= 10) {
+                    clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
+                } else {
+                    clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
+                }
+            } else {
+                // Temperaturbereiche für Fahrenheit
+                if (temperature >= 86) {
+                    clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
+                } else if (temperature >= 68) {
+                    clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
+                } else if (temperature >= 50) {
+                    clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
+                } else {
+                    clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
+                }
+            }
+        }
+
         // Geolocation zur Standortabfrage
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    userLocation = `${lat},${lon}`;
-                    fetchWeather(userLocation);
-                }, () => {
-                    alert("Standortabfrage fehlgeschlagen. Bitte geben Sie einen Ort manuell ein.");
+                    fetchWeather(`${lat},${lon}`); // Wetter für den aktuellen Standort abrufen
                 });
             } else {
-                alert("Geolocation wird von diesem Browser nicht unterstützt.");
+                alert("Geolocation wird nicht unterstützt.");
             }
         }
 
         // Einheit wechseln
         document.getElementById('toggle-unit-button').addEventListener('click', () => {
-            isCelsius = !isCelsius;
-            document.getElementById('toggle-unit-button').textContent = `Einheit wechseln: °${isCelsius ? 'C' : 'F'}`;
-            const location = document.getElementById('search-input').value || userLocation || 'Berlin';
-            fetchWeather(location);
+            isCelsius = !isCelsius; // Einheit wechseln
+            document.getElementById('toggle-unit-button').innerText = `Einheit wechseln: °${isCelsius ? 'C' : 'F'}`;
+            fetchWeather(userLocation); // Wetterdaten mit der neuen Einheit abrufen
         });
 
-        // Suche starten
+        // Suchbutton-Klick-Event
         document.getElementById('search-button').addEventListener('click', () => {
-            const location = document.getElementById('search-input').value || userLocation;
-            fetchWeather(location);
+            const location = document.getElementById('search-input').value;
+            if (location) {
+                userLocation = location; // Speichere den aktuellen Standort
+                fetchWeather(location);
+            }
         });
 
-        getLocation();
+        // Starte die App mit Geolocation
+        window.onload = getLocation;
     </script>
 </body>
 </html>
