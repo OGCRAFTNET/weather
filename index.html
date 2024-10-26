@@ -154,6 +154,7 @@
 
     <script>
         let isCelsius = true; // Temperatur-Einheit (true = Celsius, false = Fahrenheit)
+        let userLocation = ''; // Variable für Benutzerstandort
 
         function fetchWeather(location) {
             const apiKey = '673f863f29264c9abc6152331242610';
@@ -220,7 +221,8 @@
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    fetchWeather(`${lat},${lon}`);
+                    userLocation = `${lat},${lon}`;
+                    fetchWeather(userLocation);
                 }, () => {
                     alert("Standortabfrage fehlgeschlagen. Bitte geben Sie einen Ort manuell ein.");
                 });
@@ -233,21 +235,14 @@
         document.getElementById('toggle-unit-button').addEventListener('click', () => {
             isCelsius = !isCelsius;
             document.getElementById('toggle-unit-button').textContent = `Einheit wechseln: °${isCelsius ? 'C' : 'F'}`;
-            const location = document.getElementById('search-input').value || 'Berlin';
+            const location = document.getElementById('search-input').value || userLocation || 'Berlin';
             fetchWeather(location);
         });
 
         // Suche starten
         document.getElementById('search-button').addEventListener('click', () => {
-            const location = document.getElementById('search-input').value;
+            const location = document.getElementById('search-input').value || userLocation;
             fetchWeather(location);
-        });
-
-        // Eingabetaste abfangen
-        document.getElementById('search-input').addEventListener('keyup', (event) => {
-            if (event.key === "Enter") {
-                fetchWeather(document.getElementById('search-input').value);
-            }
         });
 
         getLocation();
