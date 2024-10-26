@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>☁️ Wetter App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            animation: fadeIn 1s ease; /* Fade-In-Animation für die gesamte Seite */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        h1 {
+            margin: 20px 0;
+            font-size: 1.8rem;
+            transition: transform 0.3s ease; /* Animation für die Überschrift */
+        }
+
+        h1:hover {
+            transform: scale(1.05); /* Überschrift leicht vergrößern beim Hover */
+        }
+
+        #search-container {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #search-input {
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            width: 80%;
+            max-width: 400px;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        #search-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 87, 34, 0.7);
+            animation: pulse 1s infinite; /* Pulsierende Animation für das Eingabefeld */
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 87, 34, 0.7); }
+            50% { box-shadow: 0 0 20px rgba(255, 87, 34, 1); }
+        }
+
+        #search-button {
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            background-color: #ff5722;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            margin-left: 10px;
+            transition: background-color 0.3s ease, transform 0.2s ease; /* Hinzufügen von Transformationen */
+            width: 100%;
+            max-width: 150px;
+        }
+
+        #search-button:hover {
+            background-color: #e64a19;
+            transform: translateY(-3px); /* Knopf beim Hover leicht anheben */
+        }
+
+        #weather {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            width: 90%;
+            max-width: 500px;
+            text-align: left;
+            opacity: 0; /* Standardmäßig unsichtbar */
+            animation: fadeIn 0.5s forwards; /* Fade-In-Effekt für Wetterdaten */
+            animation-delay: 0.3s; /* Verzögerung für die Animation */
+        }
+
+        #forecast {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .forecast-card {
+            background-color: #3b3b3b;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            width: 150px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transition: transform 0.2s, opacity 0.3s; /* Hinzufügen von Opazität und Transformationsanimationen */
+            opacity: 0; /* Standardmäßig unsichtbar */
+            animation: fadeIn 0.5s forwards; /* Fade-In-Effekt für Vorhersagekarten */
+        }
+
+        .forecast-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .forecast-date {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .forecast-condition {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .forecast-temp {
+            font-size: 14px;
+        }
+
+        /* Regenschirmwarnung */
+        #umbrella-warning {
+            color: #ffcc00;
+            font-weight: bold;
+            display: none; /* Standardmäßig versteckt */
+        }
+
+        /* Kleidungstipps */
+        #clothing-tip-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #3b3b3b;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none; /* Standardmäßig versteckt */
+            text-align: left;
+        }
+
+        #clothing-tip {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        /* Medienabfragen für mobile Geräte */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            #search-input, #search-button {
+                font-size: 16px;
+            }
+
+            .forecast-card {
+                width: 80px; /* Kleinere Breite für mobile Geräte */
+                animation: fadeIn 0.5s forwards; /* Fade-In-Effekt für mobile Vorhersagekarten */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 id="weather-icon">☁️ Wetter App</h1> <!-- Wolken-Emoji hier -->
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Ort oder Adresse eingeben..." />
+        <button id="search-button">🔍 Suchen</button>
+    </div>
+    <div id="weather">Lade Wetterdaten...</div>
+    <div id="umbrella-warning">🌂 Ein Regenschirm wird benötigt!</div>
+    
+    <!-- Neues Container für Kleidungstipps -->
+    <div id="clothing-tip-container">
+        <div id="clothing-tip"></div>
+    </div>
+
+    <div id="forecast"></div>
+
+    <script>
+        // Funktion zur Abfrage des Wetters und der Vorhersage
+        function fetchWeather(location) {
+            const apiKey = '673f863f29264c9abc6152331242610'; // Dein API-Schlüssel
+            const weatherApiUrl = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${location}&lang=de`;
+            const forecastApiUrl = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${location}&days=7&lang=de`;
+
+            fetch(weatherApiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const weatherDiv = document.getElementById('weather');
+                    const umbrellaWarning = document.getElementById('umbrella-warning');
+                    const clothingTip = document.getElementById('clothing-tip');
+                    const clothingTipContainer = document.getElementById('clothing-tip-container');
+
+                    if (data.error) {
+                        weatherDiv.innerHTML = "❌ Fehler: " + data.error.message;
+                        weatherDiv.style.opacity = 1; // Sichtbar machen
+                        clothingTip.innerHTML = ""; // Kleidungstipp zurücksetzen
+                        clothingTipContainer.style.display = 'none'; // Container zurücksetzen
+                        umbrellaWarning.style.display = 'none'; // Warnung zurücksetzen
+                    } else {
+                        const temperature = data.current.temp_c;
+                        const conditionText = data.current.condition.text;
+                        let emoji = "☁️"; // Standard-Emoji
+
+                        // Tipps zum Anziehen basierend auf der Temperatur und Wetterbedingungen
+                        if (conditionText.toLowerCase().includes("regen")) {
+                            clothingTip.innerHTML = "Tipp: Trage eine Regenjacke oder nimm einen Regenschirm mit!";
+                            clothingTipContainer.style.display = 'block'; // Zeige Container
+                            umbrellaWarning.style.display = 'block'; // Zeige Regenschirmwarnung
+                        } else if (temperature >= 30) {
+                            clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
+                            clothingTipContainer.style.display = 'block'; // Zeige Container
+                            umbrellaWarning.style.display = 'none'; // Keine Warnung
+                        } else if (temperature >= 20) {
+                            clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
+                            clothingTipContainer.style.display = 'block'; // Zeige Container
+                            umbrellaWarning.style.display = 'none'; // Keine Warnung
+                        } else if (temperature >= 10) {
+                            clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
+                            clothingTipContainer.style.display = 'block'; // Zeige Container
+                            umbrellaWarning.style.display = 'none'; // Keine Warnung
+                        } else {
+                            clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
+                            clothingTipContainer.style.display = 'block'; // Zeige Container
+                            umbrellaWarning.style.display = 'none'; // Keine Warnung
+                        }
+
+                        weatherDiv.innerHTML = `Aktuelle Temperatur in ${data.location.name}: ${temperature}°C - ${conditionText} ${emoji}`;
+                        weatherDiv.style.opacity = 1; // Sichtbar machen
+                    }
+                });
+
+            fetch(forecastApiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const forecastDiv = document.getElementById('forecast');
+                    forecastDiv.innerHTML = ""; // Alte Vorhersagen zurücksetzen
+                    data.forecast.forecastday.forEach(day => {
+                        const date = new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+                        const condition = day.day.condition.text;
+                        const tempMin = day.day.mintemp_c;
+                        const tempMax = day.day.maxtemp_c;
+
+                        const card = document.createElement('div');
+                        card.classList.add('forecast-card');
+                        card.innerHTML = `
+                            <div class="forecast-date">${date}</div>
+                            <div class="forecast-condition">${condition}</div>
+                            <div class="forecast-temp">Min: ${tempMin}°C | Max: ${tempMax}°C</div>
+                        `;
+                        forecastDiv.appendChild(card);
+                    });
+                });
+        }
+
+        // Geolocation verwenden, um den aktuellen Standort zu erfassen
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    fetchWeather(`${lat},${lon}`); // Wetter mit den GPS-Koordinaten abrufen
+                }, () => {
+                    alert("Standortabfrage fehlgeschlagen. Bitte geben Sie einen Ort manuell ein.");
+                });
+            } else {
+                alert("Geolocation wird von diesem Browser nicht unterstützt.");
+            }
+        }
+
+        // Sofortige Standortverfolgung beim Laden der Seite
+        window.onload = getLocation;
+
+        // Event-Listener für den Such-Button
+        document.getElementById('search-button').addEventListener('click', () => {
+            const location = document.getElementById('search-input').value;
+            fetchWeather(location);
+        });
+
+        // Event-Listener für die Eingabetaste
+        document.getElementById('search-input').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                const location = document.getElementById('search-input').value;
+                fetchWeather(location);
+            }
+        });
+    </script>
+</body>
+</html>
