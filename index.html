@@ -84,10 +84,16 @@
             display: inline-block;
             width: 90%;
             max-width: 500px;
-            text-align: left;
             opacity: 0;
             animation: fadeIn 0.5s forwards;
             animation-delay: 0.3s;
+        }
+
+        .current-temperature {
+            font-size: 2rem; /* Größere Schriftgröße für die Temperatur */
+            font-weight: bold;
+            color: #ffcc00; /* Farbe für die Temperatur hervorheben */
+            margin: 10px 0;
         }
 
         #forecast {
@@ -112,6 +118,7 @@
 
         .forecast-card:hover {
             transform: translateY(-5px);
+            cursor: pointer; /* Zeigt an, dass es klickbar ist */
         }
 
         .forecast-date {
@@ -134,6 +141,45 @@
             font-weight: bold;
             color: #ffcc00;
         }
+
+        /* Modales Fenster */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modal-content {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            color: #fff;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        #close-button {
+            background-color: #ff5722;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        #close-button:hover {
+            background-color: #e64a19;
+        }
     </style>
 </head>
 <body>
@@ -152,11 +198,37 @@
 
     <div id="forecast"></div>
 
+    <!-- Modales Fenster -->
+    <div id="modal">
+        <div id="modal-content">
+            <h2 id="modal-date"></h2>
+            <p id="modal-details"></p>
+            <p id="modal-clothing-tip"></p>
+            <button id="close-button">Zurück</button>
+        </div>
+    </div>
+
     <script>
         let isCelsius = true; // Temperatur-Einheit (true = Celsius, false = Fahrenheit)
         let userLocation = ''; // Variable für Benutzerstandort
 
+        // Funktion zum Abrufen des Standorts
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    fetchWeather(`${lat},${lon}`);
+                }, () => {
+                    alert("Standort konnte nicht ermittelt werden.");
+                });
+            } else {
+                alert("Geolokalisierung wird in diesem Browser nicht unterstützt.");
+            }
+        }
+
         function fetchWeather(location) {
+            userLocation = location; // Speichere den Standort
             const apiKey = '673f863f29264c9abc6152331242610';
             const unit = isCelsius ? 'C' : 'F';
             const weatherApiUrl = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${location}&lang=de`;
@@ -177,9 +249,10 @@
                         const temperature = isCelsius ? data.current.temp_c : data.current.temp_f;
                         const conditionText = data.current.condition.text;
 
+                        // Aktuelle Temperatur hervorheben
+                        weatherDiv.innerHTML = `Aktuelle Temperatur in ${data.location.name}: <span class="current-temperature">${temperature}°${unit}</span> - ${conditionText}`;
                         updateClothingTip(temperature, isCelsius); // Aktualisiere den Kleidungstipp
                         clothingTipContainer.style.display = 'block';
-                        weatherDiv.innerHTML = `Aktuelle Temperatur in ${data.location.name}: ${temperature}°${unit} - ${conditionText}`;
                         weatherDiv.style.opacity = 1;
                     }
                 });
@@ -188,83 +261,88 @@
                 .then(response => response.json())
                 .then(data => {
                     const forecastDiv = document.getElementById('forecast');
-                    forecastDiv.innerHTML = "";
+                    forecastDiv.innerHTML = ''; // Vorherige Vorhersage löschen
                     data.forecast.forecastday.forEach(day => {
-                        const date = new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
-                        const condition = day.day.condition.text;
-                        const tempMin = isCelsius ? day.day.mintemp_c : day.day.mintemp_f;
-                        const tempMax = isCelsius ? day.day.maxtemp_c : day.day.mintemp_f;
-
                         const card = document.createElement('div');
-                        card.classList.add('forecast-card');
+                        card.className = 'forecast-card';
                         card.innerHTML = `
-                            <div class="forecast-date">${date}</div>
-                            <div class="forecast-condition">${condition}</div>
-                            <div class="forecast-temp">Min: ${tempMin}°${unit} | Max: ${tempMax}°${unit}</div>
+                            <div class="forecast-date">${new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div>${day.day.condition.text}</div>
+                            <div>Max: ${isCelsius ? day.day.maxtemp_c : day.day.maxtemp_f}°${unit}</div>
+                            <div>Min: ${isCelsius ? day.day.mintemp_c : day.day.mintemp_f}°${unit}</div>
                         `;
+                        // Klick-Event hinzufügen
+                        card.addEventListener('click', () => showModal(day));
                         forecastDiv.appendChild(card);
                     });
                 });
         }
 
-        // Kleidungstipps basierend auf der Temperatur aktualisieren
         function updateClothingTip(temperature, isCelsius) {
             const clothingTip = document.getElementById('clothing-tip');
             if (isCelsius) {
-                if (temperature >= 30) {
-                    clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
-                } else if (temperature >= 20) {
-                    clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
-                } else if (temperature >= 10) {
-                    clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
+                if (temperature < 10) {
+                    clothingTip.innerHTML = "Zieh dich warm an! Mütze und Schal sind ratsam.";
+                } else if (temperature < 20) {
+                    clothingTip.innerHTML = "Eine Jacke ist empfehlenswert.";
                 } else {
-                    clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
+                    clothingTip.innerHTML = "Perfektes Wetter für T-Shirt und Shorts!";
                 }
             } else {
-                // Temperaturbereiche für Fahrenheit
-                if (temperature >= 86) {
-                    clothingTip.innerHTML = "Tipp: Leichte Kleidung tragen!";
-                } else if (temperature >= 68) {
-                    clothingTip.innerHTML = "Tipp: Eine Weste reicht!";
-                } else if (temperature >= 50) {
-                    clothingTip.innerHTML = "Tipp: Zieh dich warm an!";
+                if (temperature < 50) {
+                    clothingTip.innerHTML = "Zieh dich warm an! Mütze und Schal sind ratsam.";
+                } else if (temperature < 68) {
+                    clothingTip.innerHTML = "Eine Jacke ist empfehlenswert.";
                 } else {
-                    clothingTip.innerHTML = "Tipp: Zieh dich sehr warm an!";
+                    clothingTip.innerHTML = "Perfektes Wetter für T-Shirt und Shorts!";
                 }
             }
         }
 
-        // Geolocation zur Standortabfrage
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    fetchWeather(`${lat},${lon}`); // Wetter für den aktuellen Standort abrufen
-                });
+        function showModal(day) {
+            const modal = document.getElementById('modal');
+            const modalDate = document.getElementById('modal-date');
+            const modalDetails = document.getElementById('modal-details');
+            const modalClothingTip = document.getElementById('modal-clothing-tip');
+
+            modalDate.innerHTML = `Wettervorhersage für ${new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+            modalDetails.innerHTML = `${day.day.condition.text} <br> Max: ${day.day.maxtemp_c}°C / ${day.day.maxtemp_f}°F <br> Min: ${day.day.mintemp_c}°C / ${day.day.mintemp_f}°F`;
+            modalClothingTip.innerHTML = "Tipps: " + getClothingTip(day.day.maxtemp_c);
+            modal.style.display = 'flex';
+        }
+
+        function getClothingTip(maxTemp) {
+            if (maxTemp < 10) {
+                return "Zieh dich warm an!";
+            } else if (maxTemp < 20) {
+                return "Eine Jacke ist empfehlenswert.";
             } else {
-                alert("Geolocation wird nicht unterstützt.");
+                return "Perfektes Wetter für T-Shirt und Shorts!";
             }
         }
 
-        // Einheit wechseln
-        document.getElementById('toggle-unit-button').addEventListener('click', () => {
-            isCelsius = !isCelsius; // Einheit wechseln
-            document.getElementById('toggle-unit-button').innerText = `Einheit wechseln: °${isCelsius ? 'C' : 'F'}`;
-            fetchWeather(userLocation); // Wetterdaten mit der neuen Einheit abrufen
-        });
-
-        // Suchbutton-Klick-Event
+        // Event-Listener für Such-Button
         document.getElementById('search-button').addEventListener('click', () => {
             const location = document.getElementById('search-input').value;
             if (location) {
-                userLocation = location; // Speichere den aktuellen Standort
                 fetchWeather(location);
             }
         });
 
-        // Starte die App mit Geolocation
-        window.onload = getLocation;
+        // Event-Listener für Wechsel der Einheit
+        document.getElementById('toggle-unit-button').addEventListener('click', () => {
+            isCelsius = !isCelsius; // Wechsel der Einheit
+            document.getElementById('toggle-unit-button').innerText = `Einheit wechseln: °${isCelsius ? 'C' : 'F'}`;
+            fetchWeather(userLocation); // Wetter erneut abrufen
+        });
+
+        // Event-Listener für Schließen des Modals
+        document.getElementById('close-button').addEventListener('click', () => {
+            document.getElementById('modal').style.display = 'none';
+        });
+
+        // Starte mit Benutzerstandort
+        getUserLocation();
     </script>
 </body>
 </html>
